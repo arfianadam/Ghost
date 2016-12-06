@@ -1,14 +1,10 @@
-/*globals describe, before, it*/
-/*jshint expr:true*/
 var should         = require('should'),
     sinon          = require('sinon'),
     hbs            = require('express-hbs'),
     utils          = require('./utils'),
-
-// Stuff we are testing
     handlebars     = hbs.handlebars,
     helpers        = require('../../../server/helpers'),
-    errors         = require('../../../server/errors');
+    logging        = require('../../../server/logging');
 
 describe('{{#is}} helper', function () {
     before(function () {
@@ -30,8 +26,8 @@ describe('{{#is}} helper', function () {
             {fn: fn, inverse: inverse, data: {root: {context: ['home', 'index']}}}
         );
 
-        fn.called.should.be.true;
-        inverse.called.should.be.false;
+        fn.called.should.be.true();
+        inverse.called.should.be.false();
     });
 
     it('should match OR context "index, paged"', function () {
@@ -44,8 +40,8 @@ describe('{{#is}} helper', function () {
             {fn: fn, inverse: inverse, data: {root: {context: ['tag', 'paged']}}}
         );
 
-        fn.called.should.be.true;
-        inverse.called.should.be.false;
+        fn.called.should.be.true();
+        inverse.called.should.be.false();
     });
 
     it('should not match "paged"', function () {
@@ -58,14 +54,14 @@ describe('{{#is}} helper', function () {
             {fn: fn, inverse: inverse, data: {root: {context: ['index', 'home']}}}
         );
 
-        fn.called.should.be.false;
-        inverse.called.should.be.true;
+        fn.called.should.be.false();
+        inverse.called.should.be.true();
     });
 
     it('should log warning with no args', function () {
         var fn = sinon.spy(),
             inverse = sinon.spy(),
-            logWarn = sinon.stub(errors, 'logWarn');
+            logWarn = sinon.stub(logging, 'warn');
 
         helpers.is.call(
             {},
@@ -73,8 +69,8 @@ describe('{{#is}} helper', function () {
             {fn: fn, inverse: inverse, data: {root: {context: ['index', 'home']}}}
         );
 
-        logWarn.called.should.be.true;
-        fn.called.should.be.false;
-        inverse.called.should.be.false;
+        logWarn.called.should.be.true();
+        fn.called.should.be.false();
+        inverse.called.should.be.false();
     });
 });

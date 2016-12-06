@@ -19,7 +19,7 @@ queryDefaults = {
 // Default post query needs to always include author & tags
 _.extend(defaultPostQuery, queryDefaults, {
     options: {
-        include: 'author,tags,fields'
+        include: 'author,tags'
     }
 });
 
@@ -33,7 +33,7 @@ _.extend(defaultPostQuery, queryDefaults, {
 function fetchPostsPerPage(options) {
     options = options || {};
 
-    var postsPerPage = parseInt(config.theme.postsPerPage);
+    var postsPerPage = parseInt(config.get('theme').postsPerPage);
 
     // No negative posts per page, must be number
     if (!isNaN(postsPerPage) && postsPerPage > 0) {

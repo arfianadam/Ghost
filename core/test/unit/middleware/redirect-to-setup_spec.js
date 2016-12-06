@@ -1,5 +1,3 @@
-/*globals describe, it, beforeEach, afterEach */
-/*jshint expr:true*/
 var sinon           = require('sinon'),
     should          = require('should'),
     Promise         = require('bluebird'),
@@ -30,8 +28,8 @@ describe('redirectToSetup', function () {
 
         req.path = '/';
         res.redirect = sinon.spy(function () {
-            next.called.should.be.false;
-            res.redirect.called.should.be.true;
+            next.called.should.be.false();
+            res.redirect.called.should.be.true();
             done();
         });
 
@@ -47,8 +45,8 @@ describe('redirectToSetup', function () {
         req.path = '/';
 
         next = sinon.spy(function () {
-            next.called.should.be.true;
-            res.redirect.called.should.be.false;
+            next.called.should.be.true();
+            res.redirect.called.should.be.false();
             done();
         });
 
@@ -64,8 +62,44 @@ describe('redirectToSetup', function () {
         req.path = '/ghost/setup/';
 
         next = sinon.spy(function () {
-            next.called.should.be.true;
-            res.redirect.called.should.be.false;
+            next.called.should.be.true();
+            res.redirect.called.should.be.false();
+            done();
+        });
+
+        redirectToSetup(req, res, next);
+    });
+
+    it('should not redirect successful oauth authorization requests', function (done) {
+        sandbox.stub(api.authentication, 'isSetup', function () {
+            return Promise.resolve({setup: [{status: false}]});
+        });
+
+        res = {redirect: sinon.spy()};
+        req.path = '/';
+        req.query = {code: 'authCode'};
+
+        next = sinon.spy(function () {
+            next.called.should.be.true();
+            res.redirect.called.should.be.false();
+            done();
+        });
+
+        redirectToSetup(req, res, next);
+    });
+
+    it('should not redirect failed oauth authorization requests', function (done) {
+        sandbox.stub(api.authentication, 'isSetup', function () {
+            return Promise.resolve({setup: [{status: false}]});
+        });
+
+        res = {redirect: sinon.spy()};
+        req.path = '/';
+        req.query = {error: 'access_denied', state: 'randomstring'};
+
+        next = sinon.spy(function () {
+            next.called.should.be.true();
+            res.redirect.called.should.be.false();
             done();
         });
 

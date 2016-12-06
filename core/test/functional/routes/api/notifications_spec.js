@@ -1,10 +1,7 @@
-/*global describe, it, before, after */
-/*jshint expr:true*/
 var testUtils     = require('../../../utils'),
     supertest     = require('supertest'),
-
-    ghost         = require('../../../../../core'),
-
+    should        = require('should'),
+    ghost         = testUtils.startGhost,
     request;
 
 describe('Notifications API', function () {
@@ -49,7 +46,7 @@ describe('Notifications API', function () {
 
                     var jsonResponse = res.body;
 
-                    jsonResponse.notifications.should.exist;
+                    should.exist(jsonResponse.notifications);
 
                     testUtils.API.checkResponse(jsonResponse.notifications[0], 'notification');
 
@@ -85,7 +82,7 @@ describe('Notifications API', function () {
                     var location = res.headers.location,
                         jsonResponse = res.body;
 
-                    jsonResponse.notifications.should.exist;
+                    should.exist(jsonResponse.notifications);
                     testUtils.API.checkResponse(jsonResponse.notifications[0], 'notification');
 
                     jsonResponse.notifications[0].type.should.equal(newNotification.type);
@@ -95,20 +92,13 @@ describe('Notifications API', function () {
                     // begin delete test
                     request.del(location)
                         .set('Authorization', 'Bearer ' + accesstoken)
-                        .expect('Content-Type', /json/)
-                        .expect(200)
+                        .expect(204)
                         .end(function (err, res) {
                             if (err) {
                                 return done(err);
                             }
 
-                            // a delete returns a JSON object containing the notification
-                            // we just deleted.
-                            var deleteResponse = res.body;
-                            deleteResponse.notifications.should.exist;
-                            deleteResponse.notifications[0].type.should.equal(newNotification.type);
-                            deleteResponse.notifications[0].message.should.equal(newNotification.message);
-                            deleteResponse.notifications[0].status.should.equal(newNotification.status);
+                            res.body.should.be.empty();
 
                             done();
                         });

@@ -1,11 +1,7 @@
-/*global describe, it, before, after */
-/*jshint expr:true*/
 var testUtils     = require('../../../utils'),
     should        = require('should'),
     supertest     = require('supertest'),
-
-    ghost         = require('../../../../../core'),
-
+    ghost         = testUtils.startGhost,
     request;
 
 describe('Slug API', function () {
@@ -43,8 +39,8 @@ describe('Slug API', function () {
 
                 should.not.exist(res.headers['x-cache-invalidate']);
                 var jsonResponse = res.body;
-                jsonResponse.should.exist;
-                jsonResponse.slugs.should.exist;
+                should.exist(jsonResponse);
+                should.exist(jsonResponse.slugs);
                 jsonResponse.slugs.should.have.length(1);
                 testUtils.API.checkResponse(jsonResponse.slugs[0], 'slug');
                 jsonResponse.slugs[0].slug.should.equal('a-post-title');
@@ -66,8 +62,8 @@ describe('Slug API', function () {
 
                 should.not.exist(res.headers['x-cache-invalidate']);
                 var jsonResponse = res.body;
-                jsonResponse.should.exist;
-                jsonResponse.slugs.should.exist;
+                should.exist(jsonResponse);
+                should.exist(jsonResponse.slugs);
                 jsonResponse.slugs.should.have.length(1);
                 testUtils.API.checkResponse(jsonResponse.slugs[0], 'slug');
                 jsonResponse.slugs[0].slug.should.equal('atag');
@@ -89,8 +85,8 @@ describe('Slug API', function () {
 
                 should.not.exist(res.headers['x-cache-invalidate']);
                 var jsonResponse = res.body;
-                jsonResponse.should.exist;
-                jsonResponse.slugs.should.exist;
+                should.exist(jsonResponse);
+                should.exist(jsonResponse.slugs);
                 jsonResponse.slugs.should.have.length(1);
                 testUtils.API.checkResponse(jsonResponse.slugs[0], 'slug');
                 jsonResponse.slugs[0].slug.should.equal('user-name');
@@ -112,8 +108,8 @@ describe('Slug API', function () {
 
                 should.not.exist(res.headers['x-cache-invalidate']);
                 var jsonResponse = res.body;
-                jsonResponse.should.exist;
-                jsonResponse.slugs.should.exist;
+                should.exist(jsonResponse);
+                should.exist(jsonResponse.slugs);
                 jsonResponse.slugs.should.have.length(1);
                 testUtils.API.checkResponse(jsonResponse.slugs[0], 'slug');
                 jsonResponse.slugs[0].slug.should.equal('cool-app');
@@ -125,6 +121,7 @@ describe('Slug API', function () {
     it('should not be able to get a slug for an unknown type', function (done) {
         request.get(testUtils.API.getApiQuery('slugs/unknown/who knows/'))
             .set('Authorization', 'Bearer ' + accesstoken)
+            .set('Accept', 'application/json')
             .expect('Content-Type', /json/)
             .expect('Cache-Control', testUtils.cacheRules.private)
             .expect(400)
@@ -134,7 +131,7 @@ describe('Slug API', function () {
                 }
 
                 var jsonResponse = res.body;
-                jsonResponse.should.not.exist;
+                should.exist(jsonResponse.errors);
 
                 done();
             });

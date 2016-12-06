@@ -1,13 +1,11 @@
-/*globals describe, it, afterEach */
-/*jshint expr:true*/
 var should  = require('should'),
     sinon   = require('sinon'),
     _       = require('lodash'),
     Promise = require('bluebird'),
-
+    ObjectId = require('bson-objectid'),
     permissions = require('../../server/permissions'),
+    errors = require('../../server/errors'),
     apiUtils = require('../../server/api/utils'),
-
     sandbox = sinon.sandbox.create();
 
 describe('API Utils', function () {
@@ -73,8 +71,8 @@ describe('API Utils', function () {
                 checkObjectStub = sandbox.stub(apiUtils, 'checkObject').returns(Promise.resolve(object));
 
             apiUtils.validate('test')(object, {}).then(function (options) {
-                checkObjectStub.calledOnce.should.be.true;
-                checkObjectStub.calledWith(object, 'test').should.be.true;
+                checkObjectStub.calledOnce.should.be.true();
+                checkObjectStub.calledWith(object, 'test').should.be.true();
                 options.should.have.ownProperty('data');
                 options.data.should.have.ownProperty('test');
                 done();
@@ -93,8 +91,8 @@ describe('API Utils', function () {
                 checkObjectStub = sandbox.stub(apiUtils, 'checkObject').returns(Promise.resolve(object));
 
             apiUtils.validate('test')(object, undefined).then(function (options) {
-                checkObjectStub.calledOnce.should.be.true;
-                checkObjectStub.calledWith(object, 'test').should.be.true;
+                checkObjectStub.calledOnce.should.be.true();
+                checkObjectStub.calledWith(object, 'test').should.be.true();
                 options.should.have.ownProperty('data');
                 options.data.should.have.ownProperty('test');
                 done();
@@ -139,9 +137,10 @@ describe('API Utils', function () {
         });
 
         it('should allow idDefaultOptions when passed', function (done) {
-            // test read
+            var id = ObjectId.generate();
+
             apiUtils.validate('test', {opts: apiUtils.idDefaultOptions})(
-                {id: 5, context: 'stuff'}
+                {id: id, context: 'stuff'}
             ).then(function (options) {
                 options.should.not.have.ownProperty('data');
                 options.should.not.have.ownProperty('include');
@@ -151,15 +150,26 @@ describe('API Utils', function () {
                 options.should.have.ownProperty('context');
                 options.context.should.eql('stuff');
                 options.should.have.ownProperty('id');
-                options.id.should.eql(5);
+                options.id.should.eql(id);
 
                 done();
             }).catch(done);
         });
 
-        it('should reject if invalid options are passed', function (done) {
+        it('should reject if limit is invalid', function (done) {
             apiUtils.validate('test', {opts: apiUtils.browseDefaultOptions})(
-                {context: 'internal', include: 'stuff', page: 1, limit: 'none'}
+                {limit: 'none'}
+            ).then(function () {
+                done(new Error('Should have thrown a validation error'));
+            }).catch(function (err) {
+                err.should.have.property('errorType', 'ValidationError');
+                done();
+            });
+        });
+
+        it('should reject if from is invalid', function (done) {
+            apiUtils.validate('test', {opts: ['from']})(
+                {from: true}
             ).then(function () {
                 done(new Error('Should have thrown a validation error'));
             }).catch(function (err) {
@@ -184,14 +194,14 @@ describe('API Utils', function () {
                 options[key] = value;
 
                 errors = apiUtils.validateOptions(options);
-                errors.should.be.an.Array.and.have.lengthOf(1);
+                errors.should.be.an.Array().and.have.lengthOf(1);
                 errors.should.have.enumerable('0').with.property('errorType', 'ValidationError');
             });
         }
 
         it('can validate `id`', function () {
-            valid = [1, '1', 304, '304'];
-            invalid = ['test', 'de305d54'];
+            valid = [ObjectId.generate(), '1', 1];
+            invalid = ['test', 'de305d54', 300, '304'];
 
             check('id', valid, invalid);
         });
@@ -256,7 +266,7 @@ describe('API Utils', function () {
         it('should not call prepareInclude if there is no include option', function () {
             var prepareIncludeStub = sandbox.stub(apiUtils, 'prepareInclude');
             apiUtils.convertOptions(['a', 'b', 'c'])({}).should.eql({});
-            prepareIncludeStub.called.should.be.false;
+            prepareIncludeStub.called.should.be.false();
         });
 
         it('should pass options.include to prepareInclude if provided', function () {
@@ -267,11 +277,11 @@ describe('API Utils', function () {
                 actualResult;
             actualResult = apiUtils.convertOptions(allowed)(_.clone(options));
 
-            prepareIncludeStub.calledOnce.should.be.true;
-            prepareIncludeStub.calledWith(options.include, allowed).should.be.true;
+            prepareIncludeStub.calledOnce.should.be.true();
+            prepareIncludeStub.calledWith(options.include, allowed).should.be.true();
 
             actualResult.should.have.hasOwnProperty('include');
-            actualResult.include.should.be.an.Array;
+            actualResult.include.should.be.an.Array();
             actualResult.include.should.eql(expectedResult);
         });
     });
@@ -323,7 +333,7 @@ describe('API Utils', function () {
                 should.exist(data);
                 data.should.have.ownProperty('posts');
                 data.should.not.eql(object);
-                data.posts.should.be.an.Array;
+                data.posts.should.be.an.Array();
                 data.posts[0].should.have.ownProperty('author_id');
                 data.posts[0].should.not.have.ownProperty('author');
                 done();
@@ -336,7 +346,7 @@ describe('API Utils', function () {
                 should.exist(data);
                 data.should.have.ownProperty('posts');
                 data.should.eql(object);
-                data.posts.should.be.an.Array;
+                data.posts.should.be.an.Array();
                 data.posts[0].should.have.ownProperty('author_id');
                 data.posts[0].should.not.have.ownProperty('author');
                 done();
@@ -371,44 +381,63 @@ describe('API Utils', function () {
                 done();
             }).catch(done);
         });
+
+        it('will delete null values from object', function (done) {
+            var object = {test: [{id: 1, key: null}]};
+
+            apiUtils.checkObject(_.cloneDeep(object), 'test').then(function (data) {
+                should.not.exist(data.test[0].key);
+                should.exist(data.test[0].id);
+                done();
+            }).catch(done);
+        });
+
+        it('will not break if the expected object is a string', function (done) {
+            var object = {test: ['something']};
+
+            apiUtils.checkObject(_.cloneDeep(object), 'test').then(function (data) {
+                data.test[0].should.eql('something');
+                done();
+            }).catch(done);
+        });
     });
 
     describe('checkFileExists', function () {
         it('should return true if file exists in input', function () {
-            apiUtils.checkFileExists({test: {type: 'file', path: 'path'}}, 'test').should.be.true;
+            apiUtils.checkFileExists({mimetype: 'file', path: 'path'}).should.be.true();
         });
 
         it('should return false if file does not exist in input', function () {
-            apiUtils.checkFileExists({test: {type: 'file', path: 'path'}}, 'notthere').should.be.false;
+            apiUtils.checkFileExists({}).should.be.false();
         });
 
         it('should return false if file is incorrectly structured', function () {
-            apiUtils.checkFileExists({test: 'notafile'}, 'test').should.be.false;
+            apiUtils.checkFileExists({type: 'file'}).should.be.false();
         });
     });
 
     describe('checkFileIsValid', function () {
         it('returns true if file has valid extension and type', function () {
-            apiUtils.checkFileIsValid({name: 'test.txt', type: 'text'}, ['text'], ['.txt']).should.be.true;
-            apiUtils.checkFileIsValid({name: 'test.jpg', type: 'jpeg'}, ['text', 'jpeg'], ['.txt', '.jpg']).should.be.true;
+            apiUtils.checkFileIsValid({name: 'test.txt', mimetype: 'text'}, ['text'], ['.txt']).should.be.true();
+            apiUtils.checkFileIsValid({name: 'test.jpg', mimetype: 'jpeg'}, ['text', 'jpeg'], ['.txt', '.jpg']).should.be.true();
         });
 
         it('returns false if file has invalid extension', function () {
-            apiUtils.checkFileIsValid({name: 'test.txt', type: 'text'}, ['text'], ['.tar']).should.be.false;
-            apiUtils.checkFileIsValid({name: 'test', type: 'text'}, ['text'], ['.txt']).should.be.false;
+            apiUtils.checkFileIsValid({name: 'test.txt', mimetype: 'text'}, ['text'], ['.tar']).should.be.false();
+            apiUtils.checkFileIsValid({name: 'test', mimetype: 'text'}, ['text'], ['.txt']).should.be.false();
         });
 
         it('returns false if file has invalid type', function () {
-            apiUtils.checkFileIsValid({name: 'test.txt', type: 'text'}, ['archive'], ['.txt']).should.be.false;
+            apiUtils.checkFileIsValid({name: 'test.txt', mimetype: 'text'}, ['archive'], ['.txt']).should.be.false();
         });
     });
 
     describe('isPublicContext', function () {
         it('should call out to permissions', function () {
             var permsStub = sandbox.stub(permissions, 'parseContext').returns({public: true});
-            apiUtils.detectPublicContext({context: 'test'}).should.be.true;
-            permsStub.called.should.be.true;
-            permsStub.calledWith('test').should.be.true;
+            apiUtils.detectPublicContext({context: 'test'}).should.be.true();
+            permsStub.called.should.be.true();
+            permsStub.calledWith('test').should.be.true();
         });
     });
 
@@ -416,15 +445,15 @@ describe('API Utils', function () {
         it('should call out to permissions', function () {
             var permsStub = sandbox.stub(permissions, 'applyPublicRules');
             apiUtils.applyPublicPermissions('test', {});
-            permsStub.called.should.be.true;
-            permsStub.calledWith('test', {}).should.be.true;
+            permsStub.called.should.be.true();
+            permsStub.calledWith('test', {}).should.be.true();
         });
     });
 
     describe('handlePublicPermissions', function () {
         it('should return empty options if passed empty options', function (done) {
             apiUtils.handlePublicPermissions('tests', 'test')({}).then(function (options) {
-                options.should.eql({context: {app: null, internal: false, public: true, user: null}});
+                options.should.eql({context: {app: null, external: false, internal: false, public: true, user: null}});
                 done();
             }).catch(done);
         });
@@ -433,7 +462,7 @@ describe('API Utils', function () {
             var aPPStub = sandbox.stub(apiUtils, 'applyPublicPermissions').returns(Promise.resolve({}));
             apiUtils.handlePublicPermissions('tests', 'test')({}).then(function (options) {
                 aPPStub.calledOnce.should.eql(true);
-                options.should.eql({context: {app: null, internal: false, public: true, user: null}});
+                options.should.eql({context: {app: null, external: false, internal: false, public: true, user: null}});
                 done();
             }).catch(done);
         });
@@ -449,7 +478,7 @@ describe('API Utils', function () {
             apiUtils.handlePublicPermissions('tests', 'test')({context: {user: 1}}).then(function (options) {
                 cTStub.calledOnce.should.eql(true);
                 cTMethodStub.test.test.calledOnce.should.eql(true);
-                options.should.eql({context: {app: null, internal: false, public: false, user: 1}});
+                options.should.eql({context: {app: null, external: false, internal: false, public: false, user: 1}});
                 done();
             }).catch(done);
         });
@@ -457,7 +486,7 @@ describe('API Utils', function () {
         it('should throw a permissions error if permission is not granted', function (done) {
             var cTMethodStub = {
                     test: {
-                        test: sandbox.stub().returns(Promise.reject())
+                        test: sandbox.stub().returns(Promise.reject(new errors.NoPermissionError()))
                     }
                 },
                 cTStub = sandbox.stub(permissions, 'canThis').returns(cTMethodStub);
@@ -469,7 +498,7 @@ describe('API Utils', function () {
                 cTMethodStub.test.test.calledOnce.should.eql(true);
                 err.errorType.should.eql('NoPermissionError');
                 done();
-            }).catch(done);
+            });
         });
     });
 });
